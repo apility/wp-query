@@ -1,4 +1,4 @@
-=== JSON Dumper ===
+=== WPQuery ===
 Contributors: Thomas Alrek
 Tags: json,api,db,dumper
 Requires at least: 4.0

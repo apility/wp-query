@@ -21,8 +21,8 @@ defined('ABSPATH') or die;
 
 require_once($PLUGIN_PATH . 'setup.php');
 
-register_activation_hook(__FILE__, 'setup_WPQuery' );
-add_action( 'admin_notices', 'on_install_notificaiton' );
+register_activation_hook(__FILE__, 'WPQuerySetup' );
+add_action( 'admin_notices', 'WPQuerySetupNotification' );
 
 add_action('admin_menu', 'WPQueryAddMenu');
 

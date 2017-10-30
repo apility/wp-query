@@ -2,14 +2,14 @@
 
 defined('ABSPATH') or die;
 
-const WPQUERY_TABLE_NAME = "jsondumper";
+const WPQUERY_TABLE_NAME = "wpquery";
 const WPQUERY_PRIMARY = "conf_key";
 const WPQUERY_VALUE = "conf_val";
 const WPQUERY_SECRET = "SECRET_KEY";
 
 $plugin_installed = false;
 
-function on_install_notificaiton()
+function WPQuerySetupNotification()
 {
     ?>
     <div class="notice notice-success is-dismissible">
@@ -18,7 +18,7 @@ function on_install_notificaiton()
     <?php
 }
 
-function setup_jsondumper()
+function WPQuerySetup()
 {
     global $wpdb;
     $charset = $wpdb->get_charset_collate();
