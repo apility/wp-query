@@ -3,9 +3,6 @@
 defined('ABSPATH') or die;
 
 return [
-  'table' => 'wpquery',
-  'key' => 'setting',
-  'value' => 'value',
   'secret' => 'wpquery_apikey',
   'namespace' => 'wpquery/v1',
   'routes'=> [

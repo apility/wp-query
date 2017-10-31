@@ -16,7 +16,6 @@ class WPQueryPlugin
         $this->db = $wpdb;
         
         $this->config = (object) require(WPQUERY_ROOT . 'config.php');
-        $this->table = $this->db->prefix . $this->config->table;
 
         $this->addMenu();
         $this->registerRoutes();
@@ -31,25 +30,12 @@ class WPQueryPlugin
      */
     public function install()
     {
-        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-        $charset = $this->db->get_charset_collate();
-        $table = $this->table;
-        $key = $this->config->key;
-        $val = $this->config->value;
         $secret = $this->config->secret;
-        
-        $query = "CREATE TABLE ${table} (
-            ${key} varchar(255) NOT NULL UNIQUE,
-            ${val} varchar(255) NOT NULL,
-            PRIMARY KEY  (${key})
-        ) ${charset};";
-    
-        dbDelta($query);
 
         if (!$this->getKey($secret)) {
             $apiKey = $this->generateKey();
             $this->setKey($secret, $apiKey);
-            $this->setKey('notification', json_encode([
+            $this->setKey('wpquery_notification', json_encode([
                 'title' => 'API Key generated: ',
                 'message' => $apiKey,
                 'type' => 'success'
@@ -64,8 +50,7 @@ class WPQueryPlugin
      */
     public function uninstall()
     {
-        $table = $this->table;
-        $this->query("DROP TABLE {$table}");
+        $this->deleteKey($this->$config->$secret);
     }
 
     /**
@@ -108,9 +93,7 @@ class WPQueryPlugin
      */
     private function deleteKey($configKey)
     {
-        $table = $this->table;
-        $key = $this->config->key;
-        $this->query("DELETE FROM ${table} WHERE ${key} = %s", $configKey);
+        delete_option($configKey);
     }
 
     /**
@@ -121,15 +104,7 @@ class WPQueryPlugin
      */
     private function getKey($configKey)
     {
-        $table = $this->table;
-        $key = $this->config->key;
-        $val = $this->config->value;
-
-        $values = $this->query("SELECT ${val} FROM ${table} WHERE ${key} = %s", $configKey);
-        if (!count($values)) {
-            return null;
-        }
-        return $values[0]->{$val};
+        return get_option($configKey);
     }
 
     /**
@@ -140,21 +115,7 @@ class WPQueryPlugin
      */
     private function setKey($configKey, $configVal)
     {
-        $table = $this->table;
-        $key = $this->config->key;
-        $val = $this->config->value;
-
-        if ($this->getKey($configKey)) {
-            $this->query(
-                "UPDATE ${table} SET ${val} = %s WHERE ${key} = %s",
-                $configVal, $configKey
-            );
-        } else {
-            $this->query(
-                "INSERT INTO ${table} (${key}, ${val}) VALUES (%s, %s)",
-                $configKey, $configVal
-            );
-        }
+        update_option($configKey, $configVal);
     }
 
     /**
@@ -299,7 +260,7 @@ class WPQueryPlugin
     }
 
     /**
-     * Checks WPQuerys config table for a 'notification' key,
+     * Checks options for a 'wpquery_notification' key,
      * and generates an admin_notices notification.
      * The key is then deleted from the table
      *
@@ -308,10 +269,10 @@ class WPQueryPlugin
     public function flashNotification()
     {
         add_action('admin_notices', function () {
-            $notification = $this->getKey('notification');
+            $notification = $this->getKey('wpquery_notification');
             if ($notification) {
                 $notification = json_decode($notification);
-                $this->deleteKey('notification');
+                $this->deleteKey('wpquery_notification');
                 $type = $notification->type;
                 $title = $notification->title;
                 $message = $notification->message;
