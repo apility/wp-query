@@ -26,7 +26,7 @@ class WPQueryPlugin
         $this->table = $this->db->prefix . $this->config->table;
 
         register_activation_hook($file, array($this, 'install'));
-        register_deactivation_hook($file, array($this, 'uninstall'));
+        register_uninstall_hook($file, array($this, 'uninstall'));
 
         $this->addMenu();
         $this->registerRoutes();
