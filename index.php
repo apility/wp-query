@@ -3,7 +3,7 @@
     Plugin Name: WPQuery
     Plugin URI: http://github.com/apility/wp-query
     Description: Expose raw DB tables as a JSON api.
-    Version: 1.0.0
+    Version: 1.0.1
     Author: Apility
     Author URI: http://apility.no
     License: MIT
