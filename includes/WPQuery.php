@@ -7,13 +7,15 @@ class WPQueryPlugin
 
     private $db;
     private $table;
-    private $config;
+    private $routes;
     private $cache = [];
 
+    const NAMESPACE = 'wpquery/v1';
+    const SECRET = 'wpquery_apikey';
 
     /**
-     * Inits the plugin. Called from the main plugin file. 
-     * 
+     * Inits the plugin. Called from the main plugin file.
+     *
      * @param string file path to main plugin file (index.php)
      * @return void
      */
@@ -21,11 +23,11 @@ class WPQueryPlugin
     {
         global $wpdb;
         $this->db = $wpdb;
-        
-        $this->config = (object) require(WPQUERY_ROOT . 'config.php');
 
         register_activation_hook($file, array($this, 'install'));
         register_uninstall_hook($file, array($this, 'uninstall'));
+
+        $this->routes = require(WPQUERY_ROOT . 'routes.php');
 
         $this->addMenu();
         $this->registerRoutes();
@@ -40,11 +42,9 @@ class WPQueryPlugin
      */
     public function install()
     {
-        $secret = $this->config->secret;
-
-        if (!$this->getKey($secret)) {
+        if (!$this->getKey(self::SECRET)) {
             $apiKey = $this->generateKey();
-            $this->setKey($secret, $apiKey);
+            $this->setKey(self::SECRET, $apiKey);
             $this->setKey('wpquery_notification', json_encode([
                 'title' => 'API Key generated: ',
                 'message' => $apiKey,
@@ -60,7 +60,7 @@ class WPQueryPlugin
      */
     public function uninstall()
     {
-        $this->deleteKey($this->$config->$secret);
+        $this->deleteKey(self::SECRET);
     }
 
     /**
@@ -70,11 +70,11 @@ class WPQueryPlugin
      */
     public function registerRoutes()
     {
-        if (isset($_GET['apikey']) && $_GET['apikey'] == $this->getKey($this->config->secret)) {
+        if (isset($_GET['apikey']) && $_GET['apikey'] == $this->getKey(self::SECRET)) {
             add_action('rest_api_init', function () {
-                foreach ($this->config->routes as $route => $handler) {
+                foreach ($this->routes as $route => $handler) {
                     register_rest_route(
-                            $this->config->namespace,
+                            self::NAMESPACE,
                             $route, [
                                 'methods' => 'GET',
                                 'callback' => [$this, $handler]
@@ -150,7 +150,7 @@ class WPQueryPlugin
             ),
             function ($table) {
                 $name = str_replace($this->db->prefix, '', $table->table_name);
-                return $name != $this->config->table && !empty($name);
+                return !empty($name);
             }
         ));
         $list = [];
@@ -306,8 +306,8 @@ class WPQueryPlugin
                 'manage_options',
                 'WPQuery',
                 function () {
-                    $secretKey = $this->config->secret;
-                    $secretVal = $this->getKey($secretKey);
+                    $secretKey = self::SECRET;
+                    $secretVal = $this->getKey(self::SECRET);
                     include(WPQUERY_ROOT . 'templates/admin.php');
                 },
                 'dashicons-cloud'
@@ -323,9 +323,8 @@ class WPQueryPlugin
      */
     public function handlePost()
     {
-        $secretKey = $this->config->secret;
-        if (!empty($_POST) && isset($_POST[$secretKey])) {
-            $this->setKey($secretKey, $this->generateKey());
+        if (!empty($_POST) && isset($_POST[self::SECRET])) {
+            $this->setKey(self::SECRET, $this->generateKey());
             $this->notification("API key change ", "Success");
         }
     }
