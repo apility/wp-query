@@ -22,7 +22,4 @@ defined('ABSPATH') or die;
 define('WPQUERY_ROOT', plugin_dir_path(__FILE__) . 'includes/');
 
 require_once(WPQUERY_ROOT . 'WPQuery.php');
-$wpQuery = new WPQueryPlugin();
-
-register_activation_hook(__FILE__, [$wpQuery, 'install']);
-register_uninstall_hook(__FILE__, [$wpQuery, 'uninstall']);
+$wpQuery = new WPQueryPlugin(__FILE__);

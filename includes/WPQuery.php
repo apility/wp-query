@@ -10,13 +10,23 @@ class WPQueryPlugin
     private $config;
     private $cache = [];
 
-    public function __construct()
+
+    /**
+     * Inits the plugin. Called from the main plugin file. 
+     * 
+     * @param string file path to main plugin file (index.php)
+     * @return void
+     */
+    public function __construct($file)
     {
         global $wpdb;
         $this->db = $wpdb;
         
         $this->config = (object) require(WPQUERY_ROOT . 'config.php');
         $this->table = $this->db->prefix . $this->config->table;
+
+        register_activation_hook($file, array($this, 'install'));
+        register_activation_hook($file, array($this, 'uninstall'));
 
         $this->addMenu();
         $this->registerRoutes();
