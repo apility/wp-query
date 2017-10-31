@@ -1,3 +1,4 @@
+<?php defined('ABSPATH') or die;?>
 <!-- Begin WPQuery Admin template -->
 <div class="wrap">
     <h1>WPQuery settings</h1>

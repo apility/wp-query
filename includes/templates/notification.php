@@ -1,3 +1,4 @@
+<?php defined('ABSPATH') or die;?>
 <!-- Begin WPQuery notification template -->
 <div class="notice notice-<?=$type?> is-dismissible">
     <p>
