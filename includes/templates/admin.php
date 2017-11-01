@@ -19,7 +19,7 @@
                         <label for="wpquery_regenerate">Regenerate</label>
                     </th>
                     <td>
-                        <input type="checkbox" name="wpquery_regenerate" value="1" />
+                        <input type="checkbox" name="wpquery_regenerate" value="1" /> <i>(Generates a new API Key)</i>
                     </td>
                 </tr>
                 <tr>
