@@ -10,9 +10,6 @@ class WPQueryPlugin
     private $routes;
     private $cache = [];
 
-    const NAMESPACE = 'wpquery/v1';
-    const SECRET = 'wpquery_apikey';
-
     /**
      * Inits the plugin. Called from the main plugin file.
      *
@@ -42,9 +39,9 @@ class WPQueryPlugin
      */
     public function install()
     {
-        if (!$this->getKey(self::SECRET)) {
+        if (!$this->getKey('wpquery_apikey')) {
             $apiKey = $this->generateKey();
-            $this->setKey(self::SECRET, $apiKey);
+            $this->setKey('wpquery_apikey', $apiKey);
             $this->setKey('wpquery_notification', json_encode([
                 'title' => 'API Key generated: ',
                 'message' => $apiKey,
@@ -60,7 +57,7 @@ class WPQueryPlugin
      */
     public function uninstall()
     {
-        $this->deleteKey(self::SECRET);
+        $this->deleteKey('wpquery_apikey');
     }
 
     /**
@@ -70,11 +67,11 @@ class WPQueryPlugin
      */
     public function registerRoutes()
     {
-        if (isset($_GET['apikey']) && $_GET['apikey'] == $this->getKey(self::SECRET)) {
+        if (isset($_GET['apikey']) && $_GET['apikey'] == $this->getKey('wpquery_apikey')) {
             add_action('rest_api_init', function () {
                 foreach ($this->routes as $route => $handler) {
                     register_rest_route(
-                            self::NAMESPACE,
+                            'wpquery/v1',
                             $route, [
                                 'methods' => 'GET',
                                 'callback' => [$this, $handler]
@@ -306,8 +303,8 @@ class WPQueryPlugin
                 'manage_options',
                 'WPQuery',
                 function () {
-                    $secretKey = self::SECRET;
-                    $secretVal = $this->getKey(self::SECRET);
+                    $secretKey = 'wpquery_apikey';
+                    $secretVal = $this->getKey('wpquery_apikey');
                     include(WPQUERY_ROOT . 'templates/admin.php');
                 },
                 'dashicons-cloud'
@@ -323,8 +320,8 @@ class WPQueryPlugin
      */
     public function handlePost()
     {
-        if (!empty($_POST) && isset($_POST[self::SECRET])) {
-            $this->setKey(self::SECRET, $this->generateKey());
+        if (!empty($_POST) && isset($_POST['wpquery_apikey'])) {
+            $this->setKey('wpquery_apikey', $this->generateKey());
             $this->notification("API key change ", "Success");
         }
     }
