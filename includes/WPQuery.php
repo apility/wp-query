@@ -29,6 +29,7 @@ class WPQueryPlugin
         $this->addMenu();
         $this->registerRoutes();
         $this->flashNotification();
+        $this->setKey('wpquery_update', $this->getKey('wpquery_write'));
     }
 
     /**
@@ -375,8 +376,8 @@ class WPQueryPlugin
                 $this->notification("API key change ", "Success");
             }
             $this->setKey('wpquery_read', isset($_POST['wpquery_read']) ? true : false);
-            $this->setKey('wpquery_update', $this->getKey('wpquery_read'));
             $this->setKey('wpquery_write', isset($_POST['wpquery_write']) ? true : false);
+            $this->setKey('wpquery_update', $this->getKey('wpquery_write'));
             $this->notification("WPQuery settings ", "updated");
         }
     }
