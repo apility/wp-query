@@ -68,6 +68,9 @@ class WPQueryPlugin
      */
     public function uninstall()
     {
+        $this->deleteKey('wpquery_read');
+        $this->deleteKey('wpquery_write');
+        $this->deleteKey('wpquery_update');
         $this->deleteKey('wpquery_apikey');
     }
 
