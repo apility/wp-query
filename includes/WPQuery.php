@@ -48,6 +48,13 @@ class WPQueryPlugin
                 'type' => 'success'
             ]));
         }
+        if (is_null($this->getKey('wpquery_read'))) {
+            $this->setKey('wpquery_read', true);
+        }
+        if (is_null($this->getKey('wpquery_write'))) {
+            $this->setKey('wpquery_write', false);
+            $this->setKey('wpquery_update', false);
+        }
     }
 
     /**
@@ -68,15 +75,19 @@ class WPQueryPlugin
     public function registerRoutes()
     {
         if (isset($_GET['apikey']) && $_GET['apikey'] == $this->getKey('wpquery_apikey')) {
-            add_action('rest_api_init', function () {
+            $actions = ['read' => 'GET', 'write' => 'POST', 'update' => 'PUT'];
+            add_action('rest_api_init', function () use ($actions) {
                 foreach ($this->routes as $route => $handler) {
-                    register_rest_route(
-                            'wpquery/v1',
-                            $route, [
-                                'methods' => 'GET',
-                                'callback' => [$this, $handler]
-                            ]
-                        );
+                    $handlers = [];
+                    foreach ($actions as $action => $method) {
+                        if ($this->getKey('wpquery_' . $action) && method_exists($this, $action . $handler)) {
+                            $handlers[] = [
+                                'methods' => $method,
+                                'callback' => [$this, $action . $handler]
+                            ];
+                        }
+                    }
+                    register_rest_route('wpquery/v1', $route, $handlers);
                 }
             });
         }
@@ -131,7 +142,7 @@ class WPQueryPlugin
      *
      * @return array
      */
-    public function listTables()
+    public function readTables()
     {
         if (count($this->cache)) {
             return array_map(function ($table, $fields) {
@@ -165,7 +176,7 @@ class WPQueryPlugin
      */
     private function getFields($table)
     {
-        in_array($table, $this->listTables()) or die;
+        in_array($table, $this->readTables()) or die;
         $table = $this->db->prefix . $table;
         $columns = $this->query("SHOW COLUMNS FROM ${table}");
         return array_map(function ($column) {
@@ -179,9 +190,9 @@ class WPQueryPlugin
      * @param array $request
      * @return array
      */
-    public function getEntriesByField($request)
+    public function readEntriesByField($request)
     {
-        in_array($request['table'], $this->listTables()) || die;
+        in_array($request['table'], $this->readTables()) || die;
         $table = $this->db->prefix . $request['table'];
         $field = $request['field'];
         in_array($field, $this->getFields($request['table'])) or $this->trigger404();
@@ -210,9 +221,9 @@ class WPQueryPlugin
      * @param array $request
      * @return array
      */
-    public function getTable($request)
+    public function readTable($request)
     {
-        in_array($request['table'], $this->listTables()) or $this->trigger404();
+        in_array($request['table'], $this->readTables()) or $this->trigger404();
         $table = $this->db->prefix . $request['table'];
         return $this->query("SELECT * FROM ${table}");
     }
@@ -223,21 +234,58 @@ class WPQueryPlugin
      *
      * @return object
      */
-    public function getEntry($request)
+    public function readEntry($request)
     {
-        in_array($request['table'], $this->listTables()) or die;
-        $table = $this->db->prefix . $request['table'];
-        $field = $this->query(
-            "SHOW KEYS FROM ${table} WHERE Key_name = 'PRIMARY'"
-        );
-        count($field) or $this->trigger404();
-        $field = $field[0]->Column_name;
+        $table = $this->getTable($request);
+        $field = $this->getPrimaryKey($table);
         $entry = $this->query(
             "SELECT * FROM ${table} WHERE ${field} = %s",
             $request['id']
         );
         count($entry) or $this->trigger404();
         return $entry[0];
+    }
+
+    public function writeTable($request)
+    {
+        $params = json_decode($request->get_body(), true);
+        $response = ['status' => false];
+        $table = $this->getTable($request);
+        $fields = $this->getFields($request['table']);
+        if ($this->db->insert($table, $params)) {
+            $response['status'] = true;
+            $response['id'] = $this->db->insert_id;
+        }
+        return $response;
+    }
+
+    public function updateEntry($request)
+    {
+        $response = ['status' => false];
+        $table = $this->getTable($request);
+        $field = $this->getPrimaryKey($table);
+        $fields = $this->getFields($request['table']);
+        $entry = $this->readEntry($request);
+        $params = json_decode($request->get_body(), true);
+        if ($this->db->update($table, $params, [$field => $entry->{$field}])) {
+            $response['status'] = true;
+        };
+        return $response;
+    }
+
+    private function getTable($request)
+    {
+        in_array($request['table'], $this->readTables()) or die;
+        return $this->db->prefix . $request['table'];
+    }
+
+    private function getPrimaryKey($table)
+    {
+        $field = $this->query(
+            "SHOW KEYS FROM ${table} WHERE Key_name = 'PRIMARY'"
+        );
+        count($field) or $this->trigger404();
+        return $field[0]->Column_name;
     }
 
     /**
@@ -303,8 +351,9 @@ class WPQueryPlugin
                 'manage_options',
                 'WPQuery',
                 function () {
-                    $secretKey = 'wpquery_apikey';
-                    $secretVal = $this->getKey('wpquery_apikey');
+                    $read = $this->getKey('wpquery_read');
+                    $write = $this->getKey('wpquery_write');
+                    $apikey = $this->getKey('wpquery_apikey');
                     include(WPQUERY_ROOT . 'templates/admin.php');
                 },
                 'dashicons-cloud'
@@ -320,9 +369,15 @@ class WPQueryPlugin
      */
     public function handlePost()
     {
-        if (!empty($_POST) && isset($_POST['wpquery_apikey'])) {
-            $this->setKey('wpquery_apikey', $this->generateKey());
-            $this->notification("API key change ", "Success");
+        if (!empty($_POST) && isset($_POST['wpquery_options'])) {
+            if (isset($_POST['wpquery_regenerate'])) {
+                $this->setKey('wpquery_apikey', $this->generateKey());
+                $this->notification("API key change ", "Success");
+            }
+            $this->setKey('wpquery_read', isset($_POST['wpquery_read']) ? true : false);
+            $this->setKey('wpquery_update', $this->getKey('wpquery_read'));
+            $this->setKey('wpquery_write', isset($_POST['wpquery_write']) ? true : false);
+            $this->notification("WPQuery settings ", "updated");
         }
     }
 }
