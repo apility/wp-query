@@ -40,6 +40,9 @@ class WPQueryPlugin
      */
     public function install()
     {
+        if (version_compare(phpversion(), '5.6.0', '<')) {
+            die('PHP version too old (requires minimum 5.6.0)');
+        }
         if (!$this->getKey('wpquery_apikey')) {
             $apiKey = $this->generateKey();
             $this->setKey('wpquery_apikey', $apiKey);
